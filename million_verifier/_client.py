@@ -88,6 +88,7 @@ class MillionVerifierClient(CoreClient):
                 ),
             ),
         )
+        self._process_response(response=response)
         return self._parse_file_info(response=response)
 
     def get_file_info(self, file_id: int) -> FileInfo:
@@ -106,6 +107,7 @@ class MillionVerifierClient(CoreClient):
                 "file_id": file_id,
             },
         )
+        self._process_response(response=response, file_id=file_id)
         # formatting:
         return self._parse_file_info(response=response)
 
@@ -180,6 +182,7 @@ class MillionVerifierClient(CoreClient):
                 "has_error": has_error,
             },
         )
+        self._process_response(response=response)
         return FileList(
             files=[
                 self._parse_file_info(response=raw_info)
@@ -277,13 +280,15 @@ class MillionVerifierClient(CoreClient):
         :param file_id: ID of the file to stop.
         :return: JSON dictionary indicating success.
         """
-        return self._get(
+        response = self._get(
             url=f"{MV_BULK_API_URL}/bulkapi/stop",
             params={
                 "key": self._api_key,
                 "file_id": file_id,
             },
         )
+        self._process_response(response=response, file_id=file_id)
+        return response
 
     def delete_file(self, file_id: int) -> ActionResponse:
         """
@@ -294,13 +299,15 @@ class MillionVerifierClient(CoreClient):
         :param file_id: ID of the file to delete.
         :return: JSON dictionary indicating success.
         """
-        return self._get(
+        response = self._get(
             url=f"{MV_BULK_API_URL}/bulkapi/v2/delete",
             params={
                 "key": self._api_key,
                 "file_id": file_id,
             },
         )
+        self._process_response(response=response, file_id=file_id)
+        return response
 
     def check_credits(self) -> CreditsSummary:
         """
@@ -310,12 +317,14 @@ class MillionVerifierClient(CoreClient):
 
         :return: JSON dictionary detailing remaining credits.
         """
-        return self._get(
+        response = self._get(
             url=f"{MV_SINGLE_API_URL}/api/v3/credits",
             params={
                 "api": self._api_key,
             },
         )
+        self._process_response(response=response)
+        return response
 
     @staticmethod
     def _parse_file_info(response: dict) -> FileInfo:
@@ -325,3 +334,18 @@ class MillionVerifierClient(CoreClient):
         info["updated_at"] = str_to_datetime(info["updated_at"])
         info["createdate"] = str_to_datetime(info["createdate"])
         return info
+
+    @staticmethod
+    def _process_response(response: dict, file_id: Optional[int] = None) -> None:
+        """
+        Check that the response is not an erroneous response and if so, raise the appropriate error.
+
+        :param response: JSON response to process.
+        :param file_id: File-ID of the request (if appropriate).
+        :return: Nothing, the response is simply validated in place.
+        """
+        # TODO: flesh out this method to catch other cases and raise appropriate errors.
+        if response.get("error") == "file_not_found":
+            raise FileNotFoundError(
+                f"No file with ID {file_id}. Response was: {response}"
+            )

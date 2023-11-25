@@ -4,7 +4,6 @@ from typing import TypeAlias, Dict, TypeVar, List, Optional
 __all__ = [
     "MV_SINGLE_API_URL",
     "MV_BULK_API_URL",
-    "Encoder",
     "Json",
     "JsonDict",
     "APIException",

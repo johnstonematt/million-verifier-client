@@ -13,6 +13,7 @@ from million_verifier import (
     FileInfo,
     FileList,
     ActionResponse,
+    FileStatus,
 )
 
 # try both locations (such that the tests work, regardless of whether the tests are run from):
@@ -26,7 +27,7 @@ free_client = MillionVerifierClient(api_key="API_KEY_FOR_TEST")
 T = TypeVar("T", bound=dict)
 
 
-def _assert_typed_dict(obj: T, desired_type: Type[T], check_types: bool) -> None:
+def _assert_typed_dict(obj: T, desired_type: Type[T], check_types: bool = True) -> None:
     assert isinstance(obj, dict)
     types = get_type_hints(desired_type)
     for key, val_type in types.items():
@@ -47,7 +48,6 @@ def test_verify_email_address() -> None:
     _assert_typed_dict(
         obj=verification,
         desired_type=EmailVerification,
-        check_types=True,
     )
 
 
@@ -56,7 +56,6 @@ def test_check_credits() -> None:
     _assert_typed_dict(
         obj=mv_credits,
         desired_type=CreditsSummary,
-        check_types=True,
     )
 
 
@@ -72,7 +71,6 @@ def test_list_files() -> None:
         _assert_typed_dict(
             obj=file,
             desired_type=FileInfo,
-            check_types=True,
         )
 
     assert len(files["files"]) <= files["total"]
@@ -88,7 +86,6 @@ def test_get_file_info() -> None:
     _assert_typed_dict(
         obj=file_info,
         desired_type=FileInfo,
-        check_types=True,
     )
     assert file_info["file_id"] == file_id
 
@@ -101,7 +98,6 @@ def test_get_report() -> None:
         _assert_typed_dict(
             obj=row,
             desired_type=ReportEntry,
-            check_types=True,
         )
 
 
@@ -117,25 +113,44 @@ def test_actions() -> None:
     _assert_typed_dict(
         obj=upload_response,
         desired_type=FileInfo,
-        check_types=True,
     )
     assert upload_response["file_name"] == "test-emails.txt"
     # sleep to make sure it went through:
-    time.sleep(1)
-    # now stop:
+    time.sleep(3)
+
+    # now make sure the file is there:
     file_id = upload_response["file_id"]
+    file_info_v1 = client.get_file_info(file_id=file_id)
+    _assert_typed_dict(
+        obj=file_info_v1,
+        desired_type=FileInfo,
+    )
+    assert file_info_v1["file_id"] == file_id
+
+    # now stop:
     stop_response = client.stop_a_file_in_progress(file_id=file_id)
     _assert_typed_dict(
         obj=stop_response,
         desired_type=ActionResponse,
         check_types=True,
     )
+    assert stop_response["result"] == "ok"
     # sleep to make sure it went through:
-    time.sleep(1)
+    time.sleep(3)
+
+    # check that it has indeed been stopped:
+    file_info_v2 = client.get_file_info(file_id=file_id)
+    _assert_typed_dict(
+        obj=file_info_v2,
+        desired_type=FileInfo,
+    )
+    assert file_info_v2["file_id"] == file_id
+    assert file_info_v2["status"] in (FileStatus.FINISHED, FileStatus.CANCELED)
+
     # now delete:
     delete_response = client.delete_file(file_id=file_id)
     _assert_typed_dict(
         obj=delete_response,
         desired_type=ActionResponse,
-        check_types=True,
     )
+    assert delete_response["result"] == "ok"
