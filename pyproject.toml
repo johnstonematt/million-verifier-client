@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "million-verifier-client"
+version = "0.1.0"
+description = ""
+authors = ["mattjohnrock <johnstone.mattjames@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.10, <3.12"
+requests = "^2.31.0"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^7.4.3"
+python-dotenv = "^1.0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
