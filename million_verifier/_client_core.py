@@ -1,3 +1,4 @@
+from json import JSONDecodeError
 from typing import Optional, Dict, Literal, Tuple, BinaryIO
 
 from requests import Request, Session, HTTPError
@@ -31,6 +32,7 @@ class CoreClient:
         params: Optional[Dict[str, Json]] = None,
         data: Optional[Dict[str, Json]] = None,
         file: Optional[Tuple[str, Tuple[str, BinaryIO, str]]] = None,
+        allow_text_return: bool = False,
     ) -> dict | list | str:
         # format parameters:
         parameters: dict = {} if params is None else params
@@ -53,17 +55,26 @@ class CoreClient:
         except HTTPError:
             raise APIException(response.text)
 
-        return response.json()
+        try:
+            return response.json()
+
+        except JSONDecodeError:
+            if allow_text_return:
+                return response.text
+
+            raise
 
     def _get(
         self,
         url: str,
         params: Optional[Dict[str, Json]] = None,
+        allow_text_return: bool = False,
     ) -> dict | list | str:
         return self._make_request(
             request_type="GET",
             url=url,
             params=params,
+            allow_text_return=allow_text_return,
         )
 
     def _post(

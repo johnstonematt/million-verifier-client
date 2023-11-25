@@ -51,6 +51,7 @@ class Result(_BaseEnum):
     ALL = "all"
     CUSTOM = "custom"
     DISPOSABLE = "disposable"
+    REVERIFY = "reverify"
 
 
 class ReportStatus(_BaseEnum):

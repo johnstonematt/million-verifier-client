@@ -1,17 +1,19 @@
+import csv
+from io import StringIO
 from typing import List, Optional
 from datetime import datetime
 
 from ._utils import (
     MV_SINGLE_API_URL,
     MV_BULK_API_URL,
-    JsonDict,
     stringify,
     datetime_to_str,
+    str_to_datetime,
     bool_to_int,
 )
 from ._enums import FileStatus, ReportStatus, Result, Quality
 from ._client_core import CoreClient
-from ._formats import EmailVerification
+from ._formats import EmailVerification, FileInfo, ReportEntry, CreditsSummary, FileList
 
 
 __all__ = ["MillionVerifierClient"]
@@ -25,6 +27,7 @@ class MillionVerifierClient(CoreClient):
     def verify_email_address(self, email: str, timeout: int = 20) -> EmailVerification:
         """
         Verify an email-address in real-time and get results in a second.
+        Costs 1 credit.
 
         DOCS: https://developer.millionverifier.com/#operation/single-verification
 
@@ -70,7 +73,7 @@ class MillionVerifierClient(CoreClient):
             ),
         )
 
-    def get_file_info(self, file_id: int) -> JsonDict:
+    def get_file_info(self, file_id: int) -> FileInfo:
         """
         Get info for an uploaded file.
 
@@ -79,13 +82,15 @@ class MillionVerifierClient(CoreClient):
         :param file_id: ID of the file.
         :return: JSON data containing file info.
         """
-        return self._get(
+        response = self._get(
             url=f"{MV_BULK_API_URL}/bulkapi/v2/fileinfo",
             params={
                 "key": self._api_key,
                 "file_id": file_id,
             },
         )
+        # formatting:
+        return _parse_file_info(response=response)
 
     def list_files(
         self,
@@ -101,7 +106,7 @@ class MillionVerifierClient(CoreClient):
         percent_from: Optional[int] = None,
         percent_to: Optional[int] = None,
         has_error: Optional[bool] = None,
-    ) -> dict:
+    ) -> FileList:
         """
         Get a list of files, according to the provided filters.
 
@@ -140,7 +145,7 @@ class MillionVerifierClient(CoreClient):
         if percent_from is not None and percent_to is not None:
             assert percent_from <= percent_to
 
-        return self._get(
+        response = self._get(
             url=f"{MV_BULK_API_URL}/bulkapi/v2/filelist",
             params={
                 "key": self._api_key,
@@ -158,6 +163,12 @@ class MillionVerifierClient(CoreClient):
                 "has_error": has_error,
             },
         )
+        return FileList(
+            files=[
+                _parse_file_info(response=raw_info) for raw_info in response["files"]
+            ],
+            total=int(response["total"]),
+        )
 
     def get_report(
         self,
@@ -166,7 +177,7 @@ class MillionVerifierClient(CoreClient):
         status: Optional[ReportStatus | List[ReportStatus]] = None,
         include_free_domains: Optional[bool] = None,
         include_role_emails: Optional[bool] = None,
-    ) -> dict:
+    ) -> List[ReportEntry]:
         """
         Get a report for the result of a file verification.
 
@@ -188,7 +199,7 @@ class MillionVerifierClient(CoreClient):
                 include_role_emails is None
             ), "Must apply custom filter enum to filter role emails."
 
-        return self._get(
+        csv_text = self._get(
             url=f"{MV_BULK_API_URL}/bulkapi/v2/download",
             params={
                 "key": self._api_key,
@@ -198,7 +209,46 @@ class MillionVerifierClient(CoreClient):
                 "free": bool_to_int(include_free_domains),
                 "role": bool_to_int(include_role_emails),
             },
+            allow_text_return=True,
         )
+        file = StringIO(csv_text)
+        data, headings = [], []
+        for csv_row in csv.reader(file):
+            # if we are in the first row, and 'headings' is still an empty list, save the headings and then move on
+            if not headings:
+                headings = csv_row
+                continue
+
+            row = {}
+            for key, val in zip(headings, csv_row):
+                key = key.lower()
+                if key == "email":
+                    row[key] = val
+
+                elif key == "quality":
+                    row[key] = Quality(val)
+
+                elif key == "result":
+                    row[key] = Result(val)
+
+                elif key in ("free", "role"):
+                    if val.lower() == "yes":
+                        row[key] = True
+
+                    elif val.lower() == "no":
+                        row[key] = False
+
+                    else:
+                        raise ValueError(f"Unrecognised {key}: {val}")
+
+                else:
+                    raise ValueError(f"Unrecognised report key: {key}")
+
+            # for type-hinting:
+            data_row: ReportEntry = row
+            data.append(data_row)
+
+        return data
 
     def stop_a_file_in_progress(self, file_id: int) -> dict:
         """
@@ -235,9 +285,9 @@ class MillionVerifierClient(CoreClient):
             },
         )
 
-    def check_api_credits(self) -> dict:
+    def check_credits(self) -> CreditsSummary:
         """
-        Check the amount of available API credits.
+        Check the amount of available verification credits.
 
         DOCS: https://developer.millionverifier.com/#operation/api-credits
 
@@ -249,3 +299,12 @@ class MillionVerifierClient(CoreClient):
                 "api": self._api_key,
             },
         )
+
+
+def _parse_file_info(response: dict) -> FileInfo:
+    info = response.copy()
+    info["file_id"] = int(info["file_id"])
+    info["status"] = FileStatus(info["status"])
+    info["updated_at"] = str_to_datetime(info["updated_at"])
+    info["createdate"] = str_to_datetime(info["createdate"])
+    return info

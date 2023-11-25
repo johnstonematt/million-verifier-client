@@ -4,11 +4,13 @@ from typing import TypeAlias, Dict, TypeVar, List, Optional
 __all__ = [
     "MV_SINGLE_API_URL",
     "MV_BULK_API_URL",
+    "Encoder",
     "Json",
     "JsonDict",
     "APIException",
     "stringify",
     "datetime_to_str",
+    "str_to_datetime",
     "bool_to_int",
 ]
 
@@ -38,11 +40,21 @@ def stringify(i: Optional[T | List[T]]) -> Optional[str]:
     return str(i)
 
 
+_DATETIME_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+
 def datetime_to_str(dt: Optional[datetime]) -> Optional[str]:
     if dt is None:
         return
 
-    return dt.strftime("%Y-%m-%d %H:%M:%S")
+    return dt.strftime(_DATETIME_FORMAT)
+
+
+def str_to_datetime(s: Optional[str]) -> Optional[datetime]:
+    if s is None:
+        return
+
+    return datetime.strptime(s, _DATETIME_FORMAT)
 
 
 def bool_to_int(b: Optional[bool]) -> Optional[int]:

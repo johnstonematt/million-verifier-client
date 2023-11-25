@@ -9,4 +9,10 @@ from ._enums import (
     Result,
     ReportStatus,
 )
-from ._formats import EmailVerification
+from ._formats import (
+    EmailVerification,
+    CreditsSummary,
+    ReportEntry,
+    FileInfo,
+    FileList,
+)
