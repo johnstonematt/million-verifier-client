@@ -36,6 +36,7 @@ class FileStatus(_BaseEnum):
     CANCELED = "canceled"
     PAUSED = "paused"
     IN_QUEUE_TO_START = "in_queue_to_start"
+    UNKNOWN = "unknown"
 
 
 class Result(_BaseEnum):

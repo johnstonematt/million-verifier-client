@@ -1,4 +1,5 @@
 import os
+import time
 import random
 from typing import get_type_hints, Type, TypeVar
 
@@ -11,6 +12,7 @@ from million_verifier import (
     ReportEntry,
     FileInfo,
     FileList,
+    ActionResponse,
 )
 
 # try both locations (such that the tests work, regardless of whether the tests are run from):
@@ -101,3 +103,39 @@ def test_get_report() -> None:
             desired_type=ReportEntry,
             check_types=True,
         )
+
+
+def test_actions() -> None:
+    # such that it works regardless of where the test is run from:
+    file_path = (
+        "test-data/test-emails.txt"
+        if os.path.exists("test-data/test-emails.txt")
+        else "tests/test-data/test-emails.txt"
+    )
+    # upload and check that went well:
+    upload_response = client.upload_file(file_path=file_path)
+    _assert_typed_dict(
+        obj=upload_response,
+        desired_type=FileInfo,
+        check_types=True,
+    )
+    assert upload_response["file_name"] == "test-emails.txt"
+    # sleep to make sure it went through:
+    time.sleep(1)
+    # now stop:
+    file_id = upload_response["file_id"]
+    stop_response = client.stop_a_file_in_progress(file_id=file_id)
+    _assert_typed_dict(
+        obj=stop_response,
+        desired_type=ActionResponse,
+        check_types=True,
+    )
+    # sleep to make sure it went through:
+    time.sleep(1)
+    # now delete:
+    delete_response = client.delete_file(file_id=file_id)
+    _assert_typed_dict(
+        obj=delete_response,
+        desired_type=ActionResponse,
+        check_types=True,
+    )

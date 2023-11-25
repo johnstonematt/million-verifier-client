@@ -38,12 +38,14 @@ class CoreClient:
         parameters: dict = {} if params is None else params
         parameters = {key: val for key, val in parameters.items() if val is not None}
 
+        files = None if file is None else [file]
+
         request = Request(
             method=request_type,
             url=url,
             params=parameters,
             data=data,
-            files=file,
+            files=files,
         )
         response = self._session.send(
             request=request.prepare(),

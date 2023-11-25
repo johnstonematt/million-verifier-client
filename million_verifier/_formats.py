@@ -10,6 +10,7 @@ __all__ = [
     "ReportEntry",
     "CreditsSummary",
     "FileList",
+    "ActionResponse",
 ]
 
 
@@ -88,3 +89,11 @@ class FileList(TypedDict):
 
     files: List[FileInfo]
     total: int
+
+
+class ActionResponse(TypedDict):
+    """
+    Result for action-call to Million Verifier API.
+    """
+
+    result: str

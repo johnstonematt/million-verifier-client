@@ -13,7 +13,14 @@ from ._utils import (
 )
 from ._enums import FileStatus, ReportStatus, Result, Quality
 from ._client_core import CoreClient
-from ._formats import EmailVerification, FileInfo, ReportEntry, CreditsSummary, FileList
+from ._formats import (
+    EmailVerification,
+    FileInfo,
+    ReportEntry,
+    CreditsSummary,
+    FileList,
+    ActionResponse,
+)
 
 
 __all__ = ["MillionVerifierClient"]
@@ -48,23 +55,32 @@ class MillionVerifierClient(CoreClient):
         verification["result"] = Result(verification["result"])
         return verification
 
-    def upload_file(self, file_name: str, file_path: str) -> dict:
+    def upload_file(self, file_path: str, file_name: Optional[str] = None) -> FileInfo:
         """
         Upload a file containing email addresses for verification.
 
         DOCS: https://developer.millionverifier.com/#operation/bulk-upload
 
-        :param file_name: Name of the file.
         :param file_path: Path to the file.
+        :param file_name: Name of the file, defaults to name of file specified in path..
         :return: JSON data confirming file upload and containing info regarding the file's status.
         """
-        return self._post(
+        file_type = file_path.split(".")[-1]
+        if file_type not in ("csv", "txt"):
+            raise ValueError(
+                f"Can only upload csv or txt files, {file_type} not supported."
+            )
+
+        if file_name is None:
+            file_name = file_path.split("/")[-1]
+
+        response = self._post(
             url=f"{MV_BULK_API_URL}/bulkapi/v2/upload",
             params={
                 "key": self._api_key,
             },
             file=(
-                "file_content",
+                "file_contents",
                 (
                     file_name,
                     open(file_path, "rb"),
@@ -72,6 +88,7 @@ class MillionVerifierClient(CoreClient):
                 ),
             ),
         )
+        return self._parse_file_info(response=response)
 
     def get_file_info(self, file_id: int) -> FileInfo:
         """
@@ -90,7 +107,7 @@ class MillionVerifierClient(CoreClient):
             },
         )
         # formatting:
-        return _parse_file_info(response=response)
+        return self._parse_file_info(response=response)
 
     def list_files(
         self,
@@ -165,7 +182,8 @@ class MillionVerifierClient(CoreClient):
         )
         return FileList(
             files=[
-                _parse_file_info(response=raw_info) for raw_info in response["files"]
+                self._parse_file_info(response=raw_info)
+                for raw_info in response["files"]
             ],
             total=int(response["total"]),
         )
@@ -221,9 +239,8 @@ class MillionVerifierClient(CoreClient):
 
             row = {}
             for key, val in zip(headings, csv_row):
-                key = key.lower()
-                if key == "email":
-                    row[key] = val
+                if key.lower() == "email":
+                    row[key.lower()] = val
 
                 elif key == "quality":
                     row[key] = Quality(val)
@@ -242,7 +259,7 @@ class MillionVerifierClient(CoreClient):
                         raise ValueError(f"Unrecognised {key}: {val}")
 
                 else:
-                    raise ValueError(f"Unrecognised report key: {key}")
+                    row[key] = val
 
             # for type-hinting:
             data_row: ReportEntry = row
@@ -250,7 +267,7 @@ class MillionVerifierClient(CoreClient):
 
         return data
 
-    def stop_a_file_in_progress(self, file_id: int) -> dict:
+    def stop_a_file_in_progress(self, file_id: int) -> ActionResponse:
         """
         This will cancel a file that is currently in progress. The results for the already verified email
         addresses will be available for download in a few seconds.
@@ -268,7 +285,7 @@ class MillionVerifierClient(CoreClient):
             },
         )
 
-    def delete_file(self, file_id: int) -> dict:
+    def delete_file(self, file_id: int) -> ActionResponse:
         """
         Delete a file that has been uploaded to the bulk api.
 
@@ -300,11 +317,11 @@ class MillionVerifierClient(CoreClient):
             },
         )
 
-
-def _parse_file_info(response: dict) -> FileInfo:
-    info = response.copy()
-    info["file_id"] = int(info["file_id"])
-    info["status"] = FileStatus(info["status"])
-    info["updated_at"] = str_to_datetime(info["updated_at"])
-    info["createdate"] = str_to_datetime(info["createdate"])
-    return info
+    @staticmethod
+    def _parse_file_info(response: dict) -> FileInfo:
+        info = response.copy()
+        info["file_id"] = int(info["file_id"])
+        info["status"] = FileStatus(info["status"])
+        info["updated_at"] = str_to_datetime(info["updated_at"])
+        info["createdate"] = str_to_datetime(info["createdate"])
+        return info
