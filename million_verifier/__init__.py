@@ -1,4 +1,4 @@
-from ._client import MVClient
+from ._client import MillionVerifierClient
 from ._utils import (
     MV_SINGLE_API_URL,
     MV_BULK_API_URL,
@@ -6,6 +6,7 @@ from ._utils import (
 )
 from ._enums import (
     FileStatus,
-    ResultFilter,
+    Result,
     ReportStatus,
 )
+from ._formats import EmailVerification

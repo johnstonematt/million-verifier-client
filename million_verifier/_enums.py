@@ -4,8 +4,9 @@ from typing import Any
 
 __all__ = [
     "FileStatus",
-    "ResultFilter",
+    "Result",
     "ReportStatus",
+    "Quality",
 ]
 
 
@@ -37,17 +38,19 @@ class FileStatus(_BaseEnum):
     IN_QUEUE_TO_START = "in_queue_to_start"
 
 
-class ResultFilter(_BaseEnum):
+class Result(_BaseEnum):
     """
-    Million Verifier report filters.
+    Million Verifier verification results
     """
 
     OK = "ok"
+    CATCH_ALL = "catch_all"
     OK_AND_CATCH_ALL = "ok_and_catch_all"
     UNKNOWN = "unknown"
     INVALID = "invalid"
     ALL = "all"
     CUSTOM = "custom"
+    DISPOSABLE = "disposable"
 
 
 class ReportStatus(_BaseEnum):
@@ -60,3 +63,13 @@ class ReportStatus(_BaseEnum):
     UNKNOWN = "unknown"
     INVALID = "invalid"
     DISPOSABLE = "disposable"
+
+
+class Quality(_BaseEnum):
+    """
+    Million Verifier qualities.
+    """
+
+    RISKY = "risky"
+    BAD = "bad"
+    GOOD = "good"

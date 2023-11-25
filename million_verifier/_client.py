@@ -9,19 +9,20 @@ from ._utils import (
     datetime_to_str,
     bool_to_int,
 )
-from ._enums import FileStatus, ReportStatus, ResultFilter
+from ._enums import FileStatus, ReportStatus, Result, Quality
 from ._client_core import CoreClient
+from ._formats import EmailVerification
 
 
-__all__ = ["MVClient"]
+__all__ = ["MillionVerifierClient"]
 
 
-class MVClient(CoreClient):
+class MillionVerifierClient(CoreClient):
     """
     Client for million-verifier API.
     """
 
-    def verify_email_address(self, email: str, timeout: int = 20) -> JsonDict:
+    def verify_email_address(self, email: str, timeout: int = 20) -> EmailVerification:
         """
         Verify an email-address in real-time and get results in a second.
 
@@ -32,7 +33,7 @@ class MVClient(CoreClient):
         :return: JSON data containing the email verification.
         """
         assert 2 <= timeout <= 60
-        return self._get(
+        verification = self._get(
             url=f"{MV_SINGLE_API_URL}/api/v3",
             params={
                 "api": self._api_key,
@@ -40,6 +41,9 @@ class MVClient(CoreClient):
                 "timeout": timeout,
             },
         )
+        verification["quality"] = Quality(verification["quality"])
+        verification["result"] = Result(verification["result"])
+        return verification
 
     def upload_file(self, file_name: str, file_path: str) -> dict:
         """
@@ -158,7 +162,7 @@ class MVClient(CoreClient):
     def get_report(
         self,
         file_id: int,
-        result_filter: ResultFilter = ResultFilter.ALL,
+        result_filter: Result = Result.ALL,
         status: Optional[ReportStatus | List[ReportStatus]] = None,
         include_free_domains: Optional[bool] = None,
         include_role_emails: Optional[bool] = None,
@@ -175,7 +179,7 @@ class MVClient(CoreClient):
         :param include_role_emails: Whether to include role emails (only for custom filter).
         :return: ???
         """
-        if result_filter != ResultFilter.CUSTOM:
+        if result_filter != Result.CUSTOM:
             assert status is None, "Must apply custom filter enum to filter statuses."
             assert (
                 include_free_domains is None
