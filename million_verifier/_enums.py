@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any
+from typing import Any, List
 
 
 __all__ = [
@@ -15,6 +15,18 @@ class _BaseEnum(str, Enum):
     """
     Base class for enums
     """
+
+    @classmethod
+    def all(cls) -> List[str]:
+        return [str(item) for item in cls]
+
+    @classmethod
+    def contains(cls, obj: Any) -> bool:
+        for item in cls:
+            if str(obj) == str(item):
+                return True
+
+        return False
 
     def __str__(self) -> str:
         return self.value

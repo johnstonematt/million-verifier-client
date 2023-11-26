@@ -25,6 +25,9 @@ from ._formats import (
 
 __all__ = ["MillionVerifierClient"]
 
+# limit can be found at https://developer.millionverifier.com/#operation/bulk-filelist
+_PAGINATION_LIMIT = 50
+
 
 class MillionVerifierClient(CoreClient):
     """
@@ -42,7 +45,9 @@ class MillionVerifierClient(CoreClient):
         :param timeout: Timeout to terminate connection. Must be between 2 and 60 (inclusive).
         :return: JSON data containing the email verification.
         """
-        assert 2 <= timeout <= 60
+        assert (
+            2 <= timeout <= 60
+        ), f"Verification timeout must be between 2 and 60 (inclusive), but received {timeout}."
         response = self._get(
             url=f"{MV_SINGLE_API_URL}/api/v3",
             params={
@@ -107,10 +112,93 @@ class MillionVerifierClient(CoreClient):
         # formatting:
         return self._parse_file_info(response=response)
 
+    def _list_files(
+        self,
+        offset: int = 0,
+        limit: int = _PAGINATION_LIMIT,
+        file_id: Optional[int | List[int]] = None,
+        name: Optional[str] = None,
+        status: Optional[FileStatus | List[FileStatus]] = None,
+        updated_at_from: Optional[datetime] = None,
+        updated_at_to: Optional[datetime] = None,
+        create_date_from: Optional[datetime] = None,
+        create_date_to: Optional[datetime] = None,
+        percent_from: Optional[int] = None,
+        percent_to: Optional[int] = None,
+        has_error: Optional[bool] = None,
+    ) -> FileList:
+        # verify pagination:
+        assert offset >= 0, f"offset must be positive, but received {offset}"
+        assert (
+            0 <= limit <= _PAGINATION_LIMIT
+        ), f"limit must be between 0 and {_PAGINATION_LIMIT}, but received {limit}."
+
+        # verify time filters:
+        if updated_at_from is not None and updated_at_to is not None:
+            assert (
+                updated_at_from <= updated_at_to
+            ), f"updated_at_from ({updated_at_from}) must be before updated_at_to ({updated_at_to})."
+
+        if create_date_from is not None and create_date_to is not None:
+            assert (
+                create_date_from <= create_date_to
+            ), f"create_date_from ({create_date_from}) must be before create_date_to ({create_date_to})."
+
+        # verify percent filters:
+        for percent in (percent_from, percent_to):
+            if percent is not None:
+                assert (
+                    0 <= percent <= 100
+                ), "percentage must be between 1 and 100 (inclusive)"
+
+        if percent_from is not None and percent_to is not None:
+            assert (
+                percent_from <= percent_to
+            ), f"percent_from ({percent_from}) cannot be greater than percent_to ({percent_to})"
+
+        # verify status:
+        if status is not None:
+            statuses = status if isinstance(status, list) else [status]
+            for state in statuses:
+                assert FileStatus.contains(
+                    state
+                ), f"{state} is not a valid FileStatus. Valid options are: {FileStatus.all()}"
+
+        # there is an api bug where, if you set limit to 0, it acts as 50 (weird), so we handle that by making it 1:
+        limit_to_use = 1 if limit == 0 else limit
+        response = self._get(
+            url=f"{MV_BULK_API_URL}/bulkapi/v2/filelist",
+            params={
+                "key": self._api_key,
+                "offset": offset,
+                "limit": limit_to_use,
+                "id": stringify(file_id),
+                "name": name,
+                "status": stringify(status),
+                "updated_at_from": datetime_to_str(updated_at_from),
+                "updated_at_to": datetime_to_str(updated_at_to),
+                "createdate_from": datetime_to_str(create_date_from),
+                "createdate_to": datetime_to_str(create_date_to),
+                "percent_from": percent_from,
+                "percent_to": percent_to,
+                "has_error": has_error,
+            },
+        )
+        # if the limit was 0, we don't return any files, else parse all the files and return em:
+        files = (
+            []
+            if limit == 0
+            else [self._parse_file_info(raw_info) for raw_info in response["files"]]
+        )
+        return FileList(
+            files=files,
+            total=int(response["total"]),
+        )
+
     def list_files(
         self,
         offset: int = 0,
-        limit: int = 50,
+        limit: Optional[int] = None,
         file_id: Optional[int | List[int]] = None,
         name: Optional[str] = None,
         status: Optional[FileStatus | List[FileStatus]] = None,
@@ -128,7 +216,7 @@ class MillionVerifierClient(CoreClient):
         DOCS: https://developer.millionverifier.com/#operation/bulk-filelist
 
         :param offset: Pagination offset.
-        :param limit: Pagination limit, max 50.
+        :param limit: Pagination limit, if > 50 then will fetch in batches of 50.
         :param file_id: Filter for file IDs.
         :param name: Filter for file name.
         :param status: Filter for status.
@@ -141,49 +229,46 @@ class MillionVerifierClient(CoreClient):
         :param has_error: Filter for files that either do or don't have errors.
         :return: ???
         """
-        # verify pagination:
-        assert offset >= 0
-        assert 0 <= limit <= 50
+        # set limit arbitrarily high if not specified:
+        actual_limit = 1_000_000_000 if limit is None else limit
+        # initialise loop variables:
+        files_list = []
+        files_acquired = 0
+        while True:
+            limit_to_use = min(
+                actual_limit - files_acquired,
+                _PAGINATION_LIMIT,
+            )
+            # need to do at least one call (even if limit_to_use = 0) to see what the total file number is:
+            files = self._list_files(
+                offset=offset + files_acquired,
+                limit=limit_to_use,
+                file_id=file_id,
+                name=name,
+                status=status,
+                updated_at_from=updated_at_from,
+                updated_at_to=updated_at_to,
+                create_date_from=create_date_from,
+                create_date_to=create_date_to,
+                percent_from=percent_from,
+                percent_to=percent_to,
+                has_error=has_error,
+            )
+            # append and update:
+            files_list.append(files)
+            files_acquired += len(files["files"])
+            # check exit conditions:
+            if len(files["files"]) < limit_to_use or files_acquired >= actual_limit:
+                break
 
-        # verify time filters:
-        if updated_at_from is not None and updated_at_to is not None:
-            assert updated_at_from <= updated_at_to
+        # combine all:
+        all_files = []
+        for file_list in files_list:
+            all_files.extend(file_list["files"])
 
-        if create_date_from is not None and create_date_to is not None:
-            assert create_date_from <= create_date_to
-
-        # verify percent filters:
-        for percent in (percent_from, percent_to):
-            if percent is not None:
-                assert 0 <= percent <= 100
-
-        if percent_from is not None and percent_to is not None:
-            assert percent_from <= percent_to
-
-        response = self._get(
-            url=f"{MV_BULK_API_URL}/bulkapi/v2/filelist",
-            params={
-                "key": self._api_key,
-                "offset": offset,
-                "limit": limit,
-                "id": stringify(file_id),
-                "name": name,
-                "status": stringify(status),
-                "updated_at_from": datetime_to_str(updated_at_from),
-                "updated_at_to": datetime_to_str(updated_at_to),
-                "createdate_from": datetime_to_str(create_date_from),
-                "createdate_to": datetime_to_str(create_date_to),
-                "percent_from": percent_from,
-                "percent_to": percent_to,
-                "has_error": has_error,
-            },
-        )
         return FileList(
-            files=[
-                self._parse_file_info(response=raw_info)
-                for raw_info in response["files"]
-            ],
-            total=int(response["total"]),
+            files=all_files,
+            total=files_list[0]["total"],
         )
 
     def get_report(
