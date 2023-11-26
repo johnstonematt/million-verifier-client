@@ -42,7 +42,7 @@ def _random_file_id(files: FileList) -> int:
 
 
 def test_verify_email_address() -> None:
-    verification = free_client.verify_email_address(
+    verification = client.verify_email_address(
         email="john@gmail.com",
     )
     _assert_typed_dict(
@@ -52,7 +52,7 @@ def test_verify_email_address() -> None:
 
 
 def test_check_credits() -> None:
-    mv_credits: dict = client.check_credits()
+    mv_credits = client.check_credits()
     _assert_typed_dict(
         obj=mv_credits,
         desired_type=CreditsSummary,

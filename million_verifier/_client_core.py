@@ -3,7 +3,8 @@ from typing import Optional, Dict, Literal, Tuple, BinaryIO
 
 from requests import Request, Session, HTTPError
 
-from ._utils import APIException, Json
+from ._utils import Json
+from ._exceptions import APIException, IPAddressBlocked, InvalidAPIKey
 
 
 __all__ = [
@@ -54,20 +55,24 @@ class CoreClient:
             raise APIException(response.text)
 
         try:
-            return response.json()
+            result = response.json()
 
         except JSONDecodeError:
             if allow_text_return:
-                return response.text
+                result = response.text
 
-            raise
+            else:
+                raise
+
+        self._process_response(response=result)
+        return result
 
     def _get(
         self,
         url: str,
         params: Optional[Dict[str, Json]] = None,
         allow_text_return: bool = False,
-    ) -> dict | list | str:
+    ) -> dict | str:
         return self._make_request(
             request_type="GET",
             url=url,
@@ -87,3 +92,31 @@ class CoreClient:
             params=params,
             files=files,
         )
+
+    @staticmethod
+    def _process_response(response: dict | str) -> None:
+        """
+        Check that the response is not an erroneous response and if so, raise the appropriate error.
+
+        :param response: JSON response to process.
+        :return: Nothing, the response is simply validated in place.
+        """
+        # check that we got an error that is not just an empty string:
+        if (
+            isinstance(response, dict)
+            and isinstance(response.get("error"), str)
+            and response["error"]
+        ):
+            error: str = response["error"]
+            if error.lower() == "file_not_found":
+                raise FileNotFoundError(f"File ID not found. Response was: {response}")
+
+            if error.lower() == "apikey not found":
+                raise InvalidAPIKey(f"Invalid API key. Response was {response}")
+
+            if error.lower() == "ip address blocked":
+                raise IPAddressBlocked(f"IP address blocked. Response was {response}")
+
+            raise APIException(
+                f"Unknown error from MV API: '{error}'. Response was {response}"
+            )

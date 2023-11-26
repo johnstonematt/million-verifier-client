@@ -6,7 +6,6 @@ __all__ = [
     "MV_BULK_API_URL",
     "Json",
     "JsonDict",
-    "APIException",
     "stringify",
     "datetime_to_str",
     "str_to_datetime",
@@ -21,12 +20,6 @@ MV_BULK_API_URL = "https://bulkapi.millionverifier.com"
 
 Json: TypeAlias = dict | list | str | int | bool
 JsonDict: TypeAlias = Dict[str, Json]
-
-
-class APIException(Exception):
-    """
-    Raised from smartlead API errors.
-    """
 
 
 def stringify(i: Optional[T | List[T]]) -> Optional[str]:

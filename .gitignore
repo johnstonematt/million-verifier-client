@@ -22,3 +22,6 @@ venv
 
 # csv-data
 *.csv
+
+# package building
+dist

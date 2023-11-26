@@ -5,6 +5,7 @@ from typing import Any
 __all__ = [
     "FileStatus",
     "Result",
+    "SubResult",
     "ReportStatus",
     "Quality",
 ]
@@ -53,6 +54,46 @@ class Result(_BaseEnum):
     CUSTOM = "custom"
     DISPOSABLE = "disposable"
     REVERIFY = "reverify"
+
+
+class SubResult(_BaseEnum):
+    """
+    Million Verifier verification sub-result.
+    """
+
+    UNKNOWN = "unknown"
+    OK = "ok"
+    INTERNAL_ERROR = "internal_error"
+    INVALID_SYNTAX = "invalid_syntax"
+    NO_LOCAL_IP_AVAILABLE = "no_local_available"
+    DNS_SERVER_FAILURE = "dns_server_failure"
+    DNS_NO_MX = "dns_no_mx"
+    DNS_NO_A = "dns_no_a"
+    COULD_NOT_CONNECT = "could_not_connect"
+    NO_CODE_IN_BANNER = "no_code_in_banner"
+    INVALID_BANNER_CODE = "invalid_banner_code"
+    NO_CODE_IN_EHLO_RESPONSE = "no_code_in_ehlo_response"
+    NO_CODE_IN_HELO_RESPONSE = "no_code_in_helo_response"
+    NO_CODE_IN_MAIL_FROM_RESPONSE = "no_code_in_mail_from_response"
+    NO_CODE_IN_RCPT_TO_RESPONSE = "no_code_in_rcpt_to_response"
+    IP_BLOCKED = "ip_blocked"
+    NO_MAILBOX = "no_mailbox"
+    MAILBOX_DISABLED = "mailbox_disabled"
+    MAILBOX_FULL = "mailbox_full"
+    GREYLISTED = "greylisted"
+    CONNECTION_LOST = "connection_lost"
+    CONNECTION_TIMEOUT = "connection_timeout"
+    CONNECTION_REFUSED = "connection_refused"
+    CONNECTION_RESET_BY_PEER = "connection_reset_by_peer"
+    CONNECTION_NO_ROUTE_TO_HOST = "connection_no_route_to_host"
+    HOST_NOT_ACCEPT_INCOMING_MAIL = "host_not_accept_incoming_mail"
+    MAIL_SERVICE_UNAVAILABLE = "mail_service_unavailable"
+    BAD_DOMAIN = "bad_domain"
+    DNS_ERROR = "dns_error"
+    ANTI_SPAM_SYSTEM = "anti_spam_system"
+    DNS_NO_DOMAIN = "dns_no_domain"
+    DNS_REFUSED = "dns_refused"
+    TIMEOUT_ERROR = "timeout_error"
 
 
 class ReportStatus(_BaseEnum):

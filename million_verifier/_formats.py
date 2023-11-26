@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TypedDict, List
 
-from ._enums import Result, Quality, FileStatus
+from ._enums import Result, Quality, FileStatus, SubResult
 
 
 __all__ = [
@@ -23,7 +23,7 @@ class EmailVerification(TypedDict):
     quality: Quality
     result: Result
     resultcode: int
-    subresult: str
+    subresult: SubResult
     free: bool
     role: bool
     didyoumean: str

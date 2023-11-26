@@ -2,7 +2,20 @@
 Python client for [Million Verifier](https://www.millionverifier.com/). API documentation can be found 
 [here](https://developer.millionverifier.com/#section/Authentication).
 
-# Example Usage
+# Setup
+It is advised that `million-verifier-client` is installed within a virtual environment 
+(e.g., [Poetry](https://python-poetry.org/docs/), [venv](https://docs.python.org/3/tutorial/venv.html), etc.). 
+Once in an activated virtual environment, `million-verifier-client` can be installed with the following commands:
+#### Pip:
+```shell
+pip install million-verifier-client
+```
+#### Poetry:
+```shell
+poetry add million-verifier-client
+```
+
+## Example Usage
 ```python
 import os
 from million_verifier import MillionVerifierClient
@@ -41,4 +54,14 @@ Output:
   ], 
   "total": 1
 }
+```
+# Development
+## Testing
+Tests can be run using [Pytest](https://docs.pytest.org/en/7.4.x/):
+```shell
+pytest
+```
+Or, using Pytest within a Poetry environment:
+```shell
+poetry run pytest
 ```
