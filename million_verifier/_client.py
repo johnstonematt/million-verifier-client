@@ -62,7 +62,7 @@ class MillionVerifierClient(CoreClient):
         DOCS: https://developer.millionverifier.com/#operation/bulk-upload
 
         :param file_path: Path to the file.
-        :param file_name: Name of the file, defaults to name of file specified in path..
+        :param file_name: Name of the file, defaults to name of file specified in path.
         :return: JSON data confirming file upload and containing info regarding the file's status.
         """
         file_type = file_path.split(".")[-1]
@@ -74,20 +74,17 @@ class MillionVerifierClient(CoreClient):
         if file_name is None:
             file_name = file_path.split("/")[-1]
 
-        response = self._post(
-            url=f"{MV_BULK_API_URL}/bulkapi/v2/upload",
-            params={
-                "key": self._api_key,
-            },
-            file=(
-                "file_contents",
-                (
-                    file_name,
-                    open(file_path, "rb"),
-                    "text/plain",
-                ),
-            ),
-        )
+        with open(file_path, "rb") as file:
+            response = self._post(
+                url=f"{MV_BULK_API_URL}/bulkapi/v2/upload",
+                params={
+                    "key": self._api_key,
+                },
+                files={
+                    "file_contents": (file_name, file, "text/plain"),
+                },
+            )
+
         self._process_response(response=response)
         return self._parse_file_info(response=response)
 

@@ -30,21 +30,17 @@ class CoreClient:
         request_type: Literal["GET", "POST", "DELETE"],
         url: str,
         params: Optional[Dict[str, Json]] = None,
-        data: Optional[Dict[str, Json]] = None,
-        file: Optional[Tuple[str, Tuple[str, BinaryIO, str]]] = None,
+        files: Optional[Dict[str, Tuple[str, BinaryIO, str]]] = None,
         allow_text_return: bool = False,
     ) -> dict | list | str:
         # format parameters:
         parameters: dict = {} if params is None else params
         parameters = {key: val for key, val in parameters.items() if val is not None}
 
-        files = None if file is None else [file]
-
         request = Request(
             method=request_type,
             url=url,
             params=parameters,
-            data=data,
             files=files,
         )
         response = self._session.send(
@@ -83,26 +79,11 @@ class CoreClient:
         self,
         url: str,
         params: Optional[Dict[str, Json]] = None,
-        data: Optional[Dict[str, Json]] = None,
-        file: Optional[Tuple[str, Tuple[str, BinaryIO, str]]] = None,
+        files: Optional[Dict[str, Tuple[str, BinaryIO, str]]] = None,
     ) -> dict:
         return self._make_request(
             request_type="POST",
             url=url,
             params=params,
-            data=data,
-            file=file,
-        )
-
-    def _delete(
-        self,
-        url: str,
-        params: Optional[Dict[str, Json]] = None,
-        data: Optional[Dict[str, Json]] = None,
-    ) -> dict:
-        return self._make_request(
-            request_type="DELETE",
-            url=url,
-            params=params,
-            data=data,
+            files=files,
         )

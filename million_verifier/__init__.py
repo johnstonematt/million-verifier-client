@@ -8,6 +8,7 @@ from ._enums import (
     FileStatus,
     Result,
     ReportStatus,
+    Quality,
 )
 from ._formats import (
     EmailVerification,

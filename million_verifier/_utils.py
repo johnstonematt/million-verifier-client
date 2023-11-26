@@ -13,7 +13,7 @@ __all__ = [
     "bool_to_int",
 ]
 
-T = TypeVar("T")
+T = TypeVar("T", bound=str)
 
 MV_SINGLE_API_URL = "https://api.millionverifier.com"
 MV_BULK_API_URL = "https://bulkapi.millionverifier.com"
