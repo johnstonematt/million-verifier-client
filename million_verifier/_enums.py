@@ -5,6 +5,7 @@ from typing import Any, List, TypeVar, Type
 __all__ = [
     "FileStatus",
     "Result",
+    "ResultFilter",
     "SubResult",
     "ReportStatus",
     "Quality",
@@ -37,6 +38,9 @@ class _BaseEnum(str, Enum):
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, (_BaseEnum, str)) and str(self) == str(other)
 
+    def __hash__(self) -> int:
+        return hash(str(self))
+
 
 T = TypeVar("T", bound=_BaseEnum)
 
@@ -62,13 +66,77 @@ class Result(_BaseEnum):
 
     OK = "ok"
     CATCH_ALL = "catch_all"
+    UNKNOWN = "unknown"
+    INVALID = "invalid"
+    DISPOSABLE = "disposable"
+    REVERIFY = "reverify"
+
+
+class Quality(_BaseEnum):
+    """
+    Million Verifier qualities.
+    """
+
+    RISKY = "risky"
+    BAD = "bad"
+    GOOD = "good"
+
+
+class ResultFilter(_BaseEnum):
+    """
+    Result types that you can filter on when fetching reports.
+    """
+
+    OK = "ok"
     OK_AND_CATCH_ALL = "ok_and_catch_all"
     UNKNOWN = "unknown"
     INVALID = "invalid"
     ALL = "all"
     CUSTOM = "custom"
-    DISPOSABLE = "disposable"
-    REVERIFY = "reverify"
+
+    def allowed_results(self) -> List[Result]:
+        match self:
+            case ResultFilter.OK:
+                return [Result.OK]
+
+            case ResultFilter.OK_AND_CATCH_ALL:
+                return [Result.OK, Result.CATCH_ALL]
+
+            case ResultFilter.UNKNOWN:
+                return [Result.UNKNOWN]
+
+            case ResultFilter.INVALID:
+                return [Result.INVALID, Result.DISPOSABLE]
+
+            case ResultFilter.ALL | ResultFilter.CUSTOM:
+                return Result.all()
+
+            case _:
+                raise NotImplementedError(
+                    f"allowed_results not yet implemented for {self}"
+                )
+
+    def allowed_qualities(self) -> List[Quality]:
+        match self:
+            case ResultFilter.OK:
+                return [Quality.GOOD]
+
+            case ResultFilter.OK_AND_CATCH_ALL:
+                return [Quality.GOOD, Quality.RISKY]
+
+            case ResultFilter.UNKNOWN:
+                return [Quality.RISKY]
+
+            case ResultFilter.INVALID:
+                return [Quality.BAD]
+
+            case ResultFilter.ALL | ResultFilter.CUSTOM:
+                return Quality.all()
+
+            case _:
+                raise NotImplementedError(
+                    f"allowed_qualities not yet implemented for {self}."
+                )
 
 
 class SubResult(_BaseEnum):
@@ -82,6 +150,7 @@ class SubResult(_BaseEnum):
     INVALID_SYNTAX = "invalid_syntax"
     NO_LOCAL_IP_AVAILABLE = "no_local_available"
     DNS_SERVER_FAILURE = "dns_server_failure"
+    DNS_SERVER_FAILED = "dns_server_failed"
     DNS_NO_MX = "dns_no_mx"
     DNS_NO_A = "dns_no_a"
     COULD_NOT_CONNECT = "could_not_connect"
@@ -122,12 +191,40 @@ class ReportStatus(_BaseEnum):
     INVALID = "invalid"
     DISPOSABLE = "disposable"
 
+    def allowed_results(self) -> List[Result]:
+        match self:
+            case ReportStatus.OK:
+                return [Result.OK]
 
-class Quality(_BaseEnum):
-    """
-    Million Verifier qualities.
-    """
+            case ReportStatus.CATCH_ALL:
+                return [Result.CATCH_ALL]
 
-    RISKY = "risky"
-    BAD = "bad"
-    GOOD = "good"
+            case ReportStatus.UNKNOWN:
+                return [Result.UNKNOWN]
+
+            case ReportStatus.INVALID:
+                return [Result.INVALID]
+
+            case ReportStatus.DISPOSABLE:
+                return [Result.DISPOSABLE]
+
+            case _:
+                raise NotImplementedError(
+                    f"allowed_results not yet implemented for {self}."
+                )
+
+    def allowed_qualities(self) -> List["Quality"]:
+        match self:
+            case ReportStatus.OK:
+                return [Quality.GOOD]
+
+            case ReportStatus.CATCH_ALL | ReportStatus.UNKNOWN:
+                return [Quality.RISKY]
+
+            case ReportStatus.INVALID | ReportStatus.DISPOSABLE:
+                return [Quality.BAD]
+
+            case _:
+                raise NotImplementedError(
+                    f"allowed_qualities not yet implemented for {self}."
+                )

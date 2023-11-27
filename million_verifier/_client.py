@@ -11,7 +11,7 @@ from ._utils import (
     str_to_datetime,
     bool_to_int,
 )
-from ._enums import FileStatus, ReportStatus, Result, Quality, SubResult
+from ._enums import FileStatus, ReportStatus, Result, Quality, SubResult, ResultFilter
 from ._client_core import CoreClient
 from ._formats import (
     EmailVerification,
@@ -276,7 +276,7 @@ class MillionVerifierClient(CoreClient):
     def get_report(
         self,
         file_id: int,
-        result_filter: Result = Result.ALL,
+        result_filter: ResultFilter = ResultFilter.ALL,
         status: Optional[ReportStatus | List[ReportStatus]] = None,
         include_free_domains: Optional[bool] = None,
         include_role_emails: Optional[bool] = None,
@@ -293,7 +293,7 @@ class MillionVerifierClient(CoreClient):
         :param include_role_emails: Whether to include role emails (only for custom filter).
         :return: ???
         """
-        if result_filter != Result.CUSTOM:
+        if result_filter != ResultFilter.CUSTOM:
             assert status is None, "Must apply custom filter enum to filter statuses."
             assert (
                 include_free_domains is None
@@ -325,10 +325,7 @@ class MillionVerifierClient(CoreClient):
 
             row = {}
             for key, val in zip(headings, csv_row):
-                if key.lower() == "email":
-                    row[key.lower()] = val
-
-                elif key == "quality":
+                if key == "quality":
                     row[key] = Quality(val)
 
                 elif key == "result":

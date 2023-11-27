@@ -1,10 +1,16 @@
+import re
 from json import JSONDecodeError
 from typing import Optional, Dict, Literal, Tuple, BinaryIO
 
 from requests import Request, Session, HTTPError
 
 from ._utils import Json
-from ._exceptions import APIException, IPAddressBlocked, InvalidAPIKey
+from ._exceptions import (
+    APIException,
+    IPAddressBlocked,
+    InvalidAPIKey,
+    InvalidParameterValue,
+)
 
 
 __all__ = [
@@ -116,6 +122,11 @@ class CoreClient:
 
             if error.lower() == "ip address blocked":
                 raise IPAddressBlocked(f"IP address blocked. Response was {response}")
+
+            if re.match(r"unsupported \w+ value", error):
+                raise InvalidParameterValue(
+                    f"Invalid parameter. Response was {response}"
+                )
 
             raise APIException(
                 f"Unknown error from MV API: '{error}'. Response was {response}"

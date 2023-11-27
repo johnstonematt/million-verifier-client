@@ -61,10 +61,9 @@ class FileInfo(TypedDict):
 
 class ReportEntry(TypedDict):
     """
-    Single line in a Million Verifier file report.
+    Keys present in a single line in a Million Verifier file report.
     """
 
-    email: str
     quality: Quality
     result: Result
     free: bool

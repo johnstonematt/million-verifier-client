@@ -2,7 +2,17 @@ import random
 from datetime import datetime, timedelta
 from typing import Optional, List, Tuple
 
-from million_verifier import FileList, FileInfo, FileStatus, ReportEntry
+import pytest
+
+from million_verifier import (
+    FileList,
+    FileInfo,
+    FileStatus,
+    ReportEntry,
+    ReportStatus,
+    ResultFilter,
+    InvalidParameterValue,
+)
 
 from tests.utils import CLIENT, assert_typed_dict
 
@@ -29,7 +39,18 @@ _all_files = CLIENT.list_files()
 ALL_FILES = _all_files["files"]
 
 
-def test_list_files_filters() -> None:
+def test_list_files_status_filter() -> None:
+    for status in FileStatus.all():
+        # providing 'unknown' filter does not filter at all:
+        if status == FileStatus.UNKNOWN:
+            continue
+
+        files = CLIENT.list_files(status=status)
+        for file in files["files"]:
+            assert file["status"] == status
+
+
+def test_list_files_fuzz_filters() -> None:
     for _ in range(10):
         (
             file_id,
@@ -42,7 +63,7 @@ def test_list_files_filters() -> None:
             percent_from,
             percent_to,
             has_error,
-        ) = _get_random_filters()
+        ) = _get_random_list_files_filters()
 
         files = CLIENT.list_files(
             file_id=file_id,
@@ -94,9 +115,35 @@ def test_get_file_info() -> None:
 
 
 def test_get_report() -> None:
+    file_id = _random_file_id()
+    report = CLIENT.get_report(file_id=file_id)
+    assert isinstance(report, list)
+    for row in report:
+        assert_typed_dict(
+            obj=row,
+            desired_type=ReportEntry,
+            file_id=file_id,
+        )
+
+
+def test_get_report_fuzz_filters() -> None:
     for _ in range(10):
+        # randomly generate arguments:
         file_id = _random_file_id()
-        report = CLIENT.get_report(file_id=file_id)
+        (
+            result_filter,
+            status,
+            include_free_domains,
+            include_role_emails,
+        ) = _get_random_report_filters()
+        # fetch report:
+        report = CLIENT.get_report(
+            file_id=file_id,
+            result_filter=result_filter,
+            status=status,
+            include_free_domains=include_free_domains,
+            include_role_emails=include_role_emails,
+        )
         assert isinstance(report, list)
         for row in report:
             assert_typed_dict(
@@ -104,6 +151,34 @@ def test_get_report() -> None:
                 desired_type=ReportEntry,
                 file_id=file_id,
             )
+            _test_get_report_filters(
+                report_row=row,
+                result_filter=result_filter,
+                status=status,
+                include_free_domains=include_free_domains,
+                include_role_emails=include_role_emails,
+            )
+
+
+def test_file_not_found() -> None:
+    fake_file_id = 2 * max([file["file_id"] for file in ALL_FILES])
+    with pytest.raises(FileNotFoundError):
+        CLIENT.get_file_info(file_id=fake_file_id)
+
+    with pytest.raises(FileNotFoundError):
+        CLIENT.get_report(file_id=fake_file_id)
+
+    with pytest.raises(FileNotFoundError):
+        CLIENT.stop_a_file_in_progress(file_id=fake_file_id)
+
+    with pytest.raises(FileNotFoundError):
+        CLIENT.delete_file(file_id=fake_file_id)
+
+
+def test_get_report_incorrect_parameter() -> None:
+    file_id = _random_file_id()
+    with pytest.raises(InvalidParameterValue):
+        CLIENT.get_report(file_id=file_id, result_filter="NOT_A_FILTER")
 
 
 def _test_single_case_list_files_filters(
@@ -131,7 +206,8 @@ def _test_single_case_list_files_filters(
 
     if status is not None:
         if isinstance(status, FileStatus):
-            assert file["status"] == status
+            # when filtering by unknown, they allow anything to return
+            assert file["status"] == status or status == FileStatus.UNKNOWN
 
         else:
             assert file["status"] in status
@@ -162,7 +238,87 @@ def _test_single_case_list_files_filters(
             assert not file["error"]
 
 
-def _get_random_filters() -> Tuple[
+def _test_get_report_filters(
+    report_row: ReportEntry,
+    result_filter: ResultFilter,
+    status: Optional[ReportStatus | List[ReportStatus]],
+    include_free_domains: Optional[bool],
+    include_role_emails: Optional[bool],
+) -> None:
+    # vanilla result filter:
+    assert report_row["result"] in result_filter.allowed_results()
+    assert report_row["quality"] in result_filter.allowed_qualities()
+
+    # custom filter:
+    if result_filter == ResultFilter.CUSTOM:
+        if status is not None:
+            # compile all allowed results and qualities based on status filters:
+            statuses = status if isinstance(status, list) else [status]
+            allowed_results, allowed_qualities = set(), set()
+            for state in statuses:
+                allowed_results |= set(state.allowed_results())
+                allowed_qualities |= set(state.allowed_qualities())
+
+            assert report_row["result"] in allowed_results
+            assert report_row["quality"] in allowed_qualities
+
+        if include_free_domains is not None:
+            assert report_row["free"] == include_free_domains
+
+        if include_role_emails is not None:
+            assert report_row["role"] == include_role_emails
+
+
+def _get_random_report_filters() -> Tuple[
+    ResultFilter,
+    Optional[ReportStatus | List[ReportStatus]],
+    Optional[bool],
+    Optional[bool],
+]:
+    # 50/50 between custom or random:
+    if random.randint(0, 1):
+        random_index = random.randint(0, len(ResultFilter.all()) - 1)
+        result_filter = ResultFilter.all()[random_index]
+
+    else:
+        result_filter = ResultFilter.CUSTOM
+
+    # now do the rest:
+    status: Optional[ReportStatus | List[ReportStatus]] = None
+    include_free_domains: Optional[bool] = None
+    include_role_emails: Optional[bool] = None
+    # only set them if we're using a custom filter:
+    if result_filter == ResultFilter.CUSTOM:
+        # status:
+        if random.randint(0, 1):
+            # singular or list:
+            if random.randint(0, 1):
+                status = random.sample(
+                    population=ReportStatus.all(),
+                    k=random.randint(1, len(ReportStatus.all())),
+                )
+
+            else:
+                random_index = random.randint(0, len(ReportStatus.all()) - 1)
+                status = ReportStatus.all()[random_index]
+
+        # include_free_domain:
+        if random.randint(0, 1):
+            include_free_domains = bool(random.randint(0, 1))
+
+        # include_role_emails:
+        if random.randint(0, 1):
+            include_role_emails = bool(random.randint(0, 1))
+
+    return (
+        result_filter,
+        status,
+        include_free_domains,
+        include_role_emails,
+    )
+
+
+def _get_random_list_files_filters() -> Tuple[
     Optional[int | List[int]],
     Optional[str],
     Optional[FileStatus | List[FileStatus]],

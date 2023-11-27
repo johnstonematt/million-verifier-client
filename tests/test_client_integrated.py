@@ -1,29 +1,13 @@
 import os
 import time
-import random
-from datetime import datetime
-from typing import Optional, List
 
 from million_verifier import (
-    EmailVerification,
-    CreditsSummary,
-    ReportEntry,
     FileInfo,
-    FileList,
     ActionResponse,
     FileStatus,
 )
 
-from tests.utils import CLIENT, FREE_CLIENT, assert_typed_dict
-
-
-def _random_file_id(files: FileList) -> int:
-    random_index = random.randint(0, len(files["files"]) - 1)
-    return files["files"][random_index]["file_id"]
-
-
-# now that we've tested list_files, we can fetch some for ease of use:
-all_files = CLIENT.list_files()
+from tests.utils import CLIENT, assert_typed_dict
 
 
 def test_actions() -> None:
@@ -51,6 +35,10 @@ def test_actions() -> None:
         desired_type=FileInfo,
     )
     assert file_info_v1["file_id"] == file_id
+
+    # also, check it shows up in all_files:
+    all_files = CLIENT.list_files()
+    assert any(file["file_id"] == file_id for file in all_files["files"])
 
     # now stop:
     stop_response = CLIENT.stop_a_file_in_progress(file_id=file_id)
