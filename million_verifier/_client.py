@@ -229,7 +229,7 @@ class MillionVerifierClient(CoreClient):
         :param percent_from: Filter for files that have a progress greater than this.
         :param percent_to: Filter for files that have a progress less than this.
         :param has_error: Filter for files that either do or don't have errors.
-        :return: ???
+        :return: List of files that meet the provided requirements.
         """
         # set limit arbitrarily high if not specified:
         actual_limit = 1_000_000_000 if limit is None else limit
@@ -291,7 +291,7 @@ class MillionVerifierClient(CoreClient):
         :param status: Statuses to include (only for custom filter).
         :param include_free_domains: Whether to include free domains (only for custom filter).
         :param include_role_emails: Whether to include role emails (only for custom filter).
-        :return: ???
+        :return: A csv-report (formatted as a list of dictionaries).
         """
         if result_filter != ResultFilter.CUSTOM:
             assert status is None, "Must apply custom filter enum to filter statuses."
