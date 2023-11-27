@@ -133,6 +133,8 @@ class MillionVerifierClient(CoreClient):
             0 <= limit <= _PAGINATION_LIMIT
         ), f"limit must be between 0 and {_PAGINATION_LIMIT}, but received {limit}."
 
+        # if we pass in a non-integer for file_id, it doesn't work, so we enforce integer:
+
         # verify time filters:
         if updated_at_from is not None and updated_at_to is not None:
             assert (

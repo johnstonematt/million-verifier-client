@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, List
+from typing import Any, List, TypeVar, Type
 
 
 __all__ = [
@@ -17,8 +17,8 @@ class _BaseEnum(str, Enum):
     """
 
     @classmethod
-    def all(cls) -> List[str]:
-        return [str(item) for item in cls]
+    def all(cls: Type["T"]) -> List["T"]:
+        return [cls(item) for item in cls]
 
     @classmethod
     def contains(cls, obj: Any) -> bool:
@@ -36,6 +36,9 @@ class _BaseEnum(str, Enum):
 
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, (_BaseEnum, str)) and str(self) == str(other)
+
+
+T = TypeVar("T", bound=_BaseEnum)
 
 
 class FileStatus(_BaseEnum):

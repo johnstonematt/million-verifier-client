@@ -12,7 +12,7 @@ __all__ = [
     "bool_to_int",
 ]
 
-T = TypeVar("T", bound=str)
+T = TypeVar("T")
 
 MV_SINGLE_API_URL = "https://api.millionverifier.com"
 MV_BULK_API_URL = "https://bulkapi.millionverifier.com"
@@ -27,7 +27,7 @@ def stringify(i: Optional[T | List[T]]) -> Optional[str]:
         return
 
     if isinstance(i, list):
-        return ",".join(i)
+        return ",".join([str(item) for item in i])
 
     return str(i)
 
