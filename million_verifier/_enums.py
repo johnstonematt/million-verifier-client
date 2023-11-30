@@ -148,7 +148,7 @@ class SubResult(_BaseEnum):
     OK = "ok"
     INTERNAL_ERROR = "internal_error"
     INVALID_SYNTAX = "invalid_syntax"
-    NO_LOCAL_IP_AVAILABLE = "no_local_available"
+    NO_LOCAL_IP_AVAILABLE = "no_local_ip_available"
     DNS_SERVER_FAILURE = "dns_server_failure"
     DNS_SERVER_FAILED = "dns_server_failed"
     DNS_NO_MX = "dns_no_mx"

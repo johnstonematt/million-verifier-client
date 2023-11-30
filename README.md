@@ -65,3 +65,8 @@ Or, using Pytest within a Poetry environment:
 ```shell
 poetry run pytest
 ```
+In order to run tests successfully, make sure you have a valid API key declared as a `MILLION_VERIFIER_API_KEY` 
+environment variable. This can be done by adding a `.env.local` file to the root directory of this project:
+```dotenv
+MILLION_VERIFIER_API_KEY="<YOUR_API_KEY>"
+```
